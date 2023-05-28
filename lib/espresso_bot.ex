@@ -1,4 +1,8 @@
 defmodule EspressoBot do
+  @moduledoc """
+  THE Espresso bot
+  """
+
   use Application
 
   def start(_type, []) do

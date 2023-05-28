@@ -1,6 +1,11 @@
 defmodule EspressoBot.Discord.Api do
-  alias EspressoBot.Discord.ApiError
+  @moduledoc """
+  Module to interact with the Discord API.
+  """
+
   alias EspressoBot.Discord.HttpClient
+
+  require HttpClient
 
   @spec gateway() :: String.t()
   def gateway() do
@@ -15,7 +20,7 @@ defmodule EspressoBot.Discord.Api do
       {"authorization", "Bot #{Application.get_env(:espresso_bot, :discord_bot_token)}"}
 
     url =
-      case do_request(:get, "/gateway/bot", [bot_token_header]) do
+      case do_request(:get, "/api/v10/gateway/bot", [bot_token_header]) do
         {:ok, body} -> body["url"]
         {:error, error} -> raise error
       end
@@ -25,7 +30,7 @@ defmodule EspressoBot.Discord.Api do
   end
 
   defp do_request(method, route, headers) do
-    {:ok, conn} = HttpClient.open()
+    {:ok, conn} = HttpClient.connect("discord.com")
     headers = [{"content-type", "application/json"}] ++ headers
 
     HttpClient.request(conn, method, route, headers, "")
@@ -38,11 +43,11 @@ defmodule EspressoBot.Discord.Api do
       {:error, error} ->
         {:error, error}
 
-      {:ok, {status, _, data}} when status in [200, 201] ->
+      {:ok, HttpClient.response(status: status, data: data)} when status in [200, 201] ->
         {:ok, data}
 
-      {:ok, {status, _, data}} ->
-        {:error, %ApiError{status_code: status, error: Jason.decode!(data, keys: :atoms)}}
+      {:ok, HttpClient.response(status: status, data: data)} ->
+        {:error, %{status_code: status, error: Jason.decode!(data, keys: :atoms)}}
     end
   end
 

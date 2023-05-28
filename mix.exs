@@ -25,7 +25,8 @@ defmodule EspressoBot.MixProject do
       {:mint, "~> 1.0"},
       {:mint_web_socket, "~> 1.0"},
       {:jason, "~> 1.4"},
-      {:dialyxir, "~> 1.3", only: [:dev], runtime: false}
+      {:dialyxir, "~> 1.3", only: [:dev], runtime: false},
+      {:credo, "~> 1.7", only: [:dev, :test], runtime: false}
     ]
   end
 end
