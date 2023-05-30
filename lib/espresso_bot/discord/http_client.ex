@@ -26,6 +26,16 @@ defmodule EspressoBot.Discord.HttpClient do
   @type response :: record(:response, status: integer, headers: [header], data: String.t())
   @type header :: {String.t(), String.t()}
 
+  @spec connect(String.t()) :: {:ok, pid} | {:error, term}
+  def connect(domain) do
+    with {:ok, pid} <- GenServer.start_link(__MODULE__, []),
+         :ok <- GenServer.call(pid, {:connect, domain}) do
+      {:ok, pid}
+    else
+      {:error, error} -> {:error, error}
+    end
+  end
+
   @spec request(pid, method, String.t(), [header], String.t()) ::
           {:ok, response()} | {:error, term}
         when method: :get | :post | :put
@@ -34,7 +44,7 @@ defmodule EspressoBot.Discord.HttpClient do
   end
 
   @impl true
-  def handle_connect(domain, _from, state) do
+  def handle_call({:connect, domain}, _from, state) do
     case Mint.HTTP.connect(:https, domain, 443, Base.connect_opts()) do
       {:ok, conn} ->
         state = %__MODULE__{state | conn: conn}
@@ -63,6 +73,25 @@ defmodule EspressoBot.Discord.HttpClient do
         state = put_in(state.conn, conn)
 
         {:reply, {:error, reason}, state}
+    end
+  end
+
+  @impl true
+  def handle_info(message, %__MODULE__{} = state) do
+    case Mint.HTTP.stream(state.conn, message) do
+      :unknown ->
+        Logger.debug("Got unknown message: " <> message)
+
+        {:noreply, state}
+
+      {:ok, conn, responses} ->
+        state = %__MODULE__{state | conn: conn}
+        state = Enum.reduce(responses, state, &handle_responses/2)
+
+        {:noreply, state}
+
+      {:error, _conn, reason, _responses} ->
+        raise reason
     end
   end
 

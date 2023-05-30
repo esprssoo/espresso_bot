@@ -7,11 +7,11 @@ defmodule EspressoBot.Discord.Api do
 
   require HttpClient
 
-  @spec gateway() :: String.t()
+  @spec gateway() :: {String.t(), integer}
   def gateway() do
     case :persistent_term.get(:discord_gateway_url, nil) do
       nil -> get_new_gateway_url()
-      url -> url
+      result -> result
     end
   end
 
@@ -19,14 +19,18 @@ defmodule EspressoBot.Discord.Api do
     bot_token_header =
       {"authorization", "Bot #{Application.get_env(:espresso_bot, :discord_bot_token)}"}
 
-    url =
-      case do_request(:get, "/api/v10/gateway/bot", [bot_token_header]) do
-        {:ok, body} -> body["url"]
-        {:error, error} -> raise error
-      end
+    case do_request(:get, "/api/v10/gateway/bot", [bot_token_header]) do
+      {:ok, body} ->
+        "wss://" <> url = body["url"]
+        shards = if body["shards"], do: body["shards"], else: 1
 
-    :persistent_term.put(:discord_gateway_url, url)
-    url
+        :persistent_term.put(:discord_gateway_url, {url, shards})
+
+        {url, shards}
+
+      {:error, error} ->
+        raise error
+    end
   end
 
   defp do_request(method, route, headers) do
