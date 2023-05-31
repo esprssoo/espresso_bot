@@ -6,6 +6,7 @@ defmodule EspressoBot.Discord.WebsocketClient do
     :websocket,
     :request_ref,
     :caller,
+    :sender,
     requests: %{},
     closing?: false
   ]
@@ -19,18 +20,29 @@ defmodule EspressoBot.Discord.WebsocketClient do
 
   # @type t :: %__MODULE__{conn: Mint.HTTP.t()}
 
-  @spec connect(String.t()) :: {:ok, pid} | {:error, term}
-  def connect(domain) do
+  @doc """
+  Connect to a websocket on `domain`
+  """
+  @spec connect(String.t(), pid) :: {:ok, pid} | {:error, term}
+  def connect(domain, sender) do
     with {:ok, pid} <- GenServer.start_link(__MODULE__, []),
-         :ok <- GenServer.call(pid, {:connect, domain}) do
+         :ok <- GenServer.call(pid, {:connect, domain, sender}) do
       {:ok, pid}
     else
       {:error, error} -> {:error, error}
     end
   end
 
+  @doc """
+  Sends a message to the websocket. `msg` must be serialized before sending.
+  """
+  @spec send_message(pid, String.t()) :: :ok | {:error, term}
+  def send_message(pid, msg) do
+    GenServer.call(pid, {:send, msg})
+  end
+
   @impl true
-  def handle_call({:connect, domain}, from, state) do
+  def handle_call({:connect, domain, sender}, from, state) do
     path = "/?v=10&encoding=json"
     opts = Base.connect_opts() ++ [protocols: [:http1]]
 
@@ -41,6 +53,7 @@ defmodule EspressoBot.Discord.WebsocketClient do
         | conn: conn,
           request_ref: ref,
           caller: from,
+          sender: sender,
           requests: %{ref => %{from: from, response: HttpClient.response()}}
       }
 
@@ -52,10 +65,18 @@ defmodule EspressoBot.Discord.WebsocketClient do
   end
 
   @impl true
+  def handle_call({:send, msg}, _from, state) do
+    case stream_frame(state, {:text, msg}) do
+      {:ok, state} -> {:reply, :ok, state}
+      {:error, state, error} -> {:reply, {:error, error}, state}
+    end
+  end
+
+  @impl true
   def handle_info(message, %__MODULE__{} = state) do
     case Mint.WebSocket.stream(state.conn, message) do
       :unknown ->
-        Logger.debug("Got unknown message: " <> message)
+        Logger.debug("[websocket] got unknown message: " <> message)
 
         {:noreply, state}
 
@@ -107,12 +128,12 @@ defmodule EspressoBot.Discord.WebsocketClient do
     state =
       case frame do
         {:text, text} ->
-          IO.inspect(text)
+          send(state.sender, {:event, text})
 
           state
 
         {:binary, _binary} ->
-          Logger.warn("Not handling binary frames!")
+          Logger.warn("[websocket] Not handling binary frames!")
 
           state
 
@@ -123,12 +144,12 @@ defmodule EspressoBot.Discord.WebsocketClient do
           state
 
         {:pong, _binary} ->
-          Logger.warn("Not handling pong frames!")
+          Logger.warn("[websocket] Not handling pong frames!")
 
           state
 
-        {:close, _code, _reason} ->
-          Logger.debug("[websocket] received a close")
+        {:close, _code, reason} ->
+          Logger.debug("[websocket] received a close: #{inspect(reason)}")
           state = put_in(state.closing?, true)
 
           state
@@ -157,6 +178,7 @@ defmodule EspressoBot.Discord.WebsocketClient do
   defp do_close(state) do
     _ = stream_frame(state, :close)
     Mint.HTTP.close(state.conn)
+    send(state.sender, :close)
     {:stop, :normal, state}
   end
 end

@@ -3,6 +3,8 @@ defmodule EspressoBot.Discord.Api do
   Module to interact with the Discord API.
   """
 
+  @base_route "/api/v10"
+
   alias EspressoBot.Discord.HttpClient
 
   require HttpClient
@@ -19,7 +21,7 @@ defmodule EspressoBot.Discord.Api do
     bot_token_header =
       {"authorization", "Bot #{Application.get_env(:espresso_bot, :discord_bot_token)}"}
 
-    case do_request(:get, "/api/v10/gateway/bot", [bot_token_header]) do
+    case do_request(:get, "/gateway/bot", [bot_token_header]) do
       {:ok, body} ->
         "wss://" <> url = body["url"]
         shards = if body["shards"], do: body["shards"], else: 1
@@ -37,7 +39,7 @@ defmodule EspressoBot.Discord.Api do
     {:ok, conn} = HttpClient.connect("discord.com")
     headers = [{"content-type", "application/json"}] ++ headers
 
-    HttpClient.request(conn, method, route, headers, "")
+    HttpClient.request(conn, method, @base_route <> route, headers, "")
     |> format_response()
     |> decode_response()
   end
