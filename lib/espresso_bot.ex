@@ -8,7 +8,8 @@ defmodule EspressoBot do
 
   def start(_type, []) do
     children = [
-      Shard.Supervisor
+      Shard.Supervisor,
+      {Task.Supervisor, name: :event_handler}
     ]
 
     Supervisor.start_link(children, strategy: :one_for_one)

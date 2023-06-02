@@ -1,9 +1,16 @@
 defmodule EspressoBot.Discord.Shard do
-  use GenServer
+  @moduledoc """
+  Handles Discord gateway events and dispatches any unhandled events to a
+  separate process.
+  """
+
+  alias EspressoBot.Discord.WebsocketClient
+  alias EspressoBot.Discord.Shard.Dispatcher
+  alias EspressoBot.Discord.Shard.Payload
 
   require Logger
-  alias EspressoBot.Discord.WebsocketClient
-  alias EspressoBot.Discord.Shard.Payload
+
+  use GenServer
 
   def start_link([gateway, shard_num, total_shards]) do
     GenServer.start_link(__MODULE__, [gateway, shard_num, total_shards])
@@ -74,6 +81,9 @@ defmodule EspressoBot.Discord.Shard do
     {:noreply, state}
   end
 
+  @impl true
+  def handle_info(_message, state), do: {:noreply, state}
+
   defp handle_event(:hello, payload, state) do
     Logger.debug("HELLO")
 
@@ -103,6 +113,8 @@ defmodule EspressoBot.Discord.Shard do
 
   defp handle_event(:dispatch, payload, state) do
     Logger.debug("DISPATCH")
+
+    :ok = Dispatcher.dispatch(payload)
 
     if payload["t"] == "READY" do
       Logger.info("READY")
