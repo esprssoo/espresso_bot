@@ -5,21 +5,29 @@ defmodule EspressoBot.Discord.Api do
 
   @base_route "/api/v10"
 
+  alias EspressoBot.Discord.Data.Interaction
+  alias EspressoBot.Discord.Data.ApplicationCommand
   alias EspressoBot.Client.HttpClient
   alias EspressoBot.Client.Request
 
   require HttpClient
 
-  def create_interaction_response(id, token, options) do
-    route = "/interactions/#{id}/#{token}/callback"
+  @spec create_interaction_response(Interaction.t(), map()) ::
+          {:ok} | {:ok, term} | {:error, term}
+  def create_interaction_response(%Interaction{} = interaction, options) do
+    route = "/interactions/#{interaction.id}/#{interaction.token}/callback"
 
     request(:post, route, options)
     |> authorized()
   end
 
-  def bulk_overwrite_global_application_commands(application_id, commands) do
-    request(:put, "/applications/#{application_id}/commands", commands)
-    |> authorized()
+  @spec bulk_overwrite_global_application_commands(String.t(), [ApplicationCommand.t()]) ::
+          :ok | {:error, term}
+  def(bulk_overwrite_global_application_commands(application_id, commands)) do
+    case request(:put, "/applications/#{application_id}/commands", commands) |> authorized() do
+      {:ok, _data} -> :ok
+      {:error, reason} -> {:error, reason}
+    end
   end
 
   @spec gateway() :: {String.t(), integer}

@@ -11,7 +11,7 @@ defmodule EspressoBot.Discord.Shard.Dispatcher do
   end
 
   defp format_event({"INTERACTION_CREATE", data}) do
-    EspressoBot.Util.map_to_struct(data, %Interaction{})
+    Interaction.to_struct(data)
   end
 
   # TODO: Handle all events

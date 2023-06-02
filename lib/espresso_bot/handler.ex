@@ -1,5 +1,6 @@
 defmodule EspressoBot.Handler do
   alias EspressoBot.Discord.Data.Interaction
+  alias EspressoBot.Discord.Data.InteractionData
   alias EspressoBot.Discord.Api
 
   require Logger
@@ -10,11 +11,15 @@ defmodule EspressoBot.Handler do
     :ok
   end
 
-  defp handle(%Interaction{} = data) do
-    Api.create_interaction_response(data.id, data.token, %{
-      "type" => 4,
-      "data" => %{"content" => "You said: #{data.message}"}
-    })
+  defp handle(%Interaction{data: %InteractionData{name: "echo"} = data} = interaction) do
+    echo = List.first(data.options)
+
+    if echo != nil do
+      Api.create_interaction_response(interaction, %{
+        "type" => 4,
+        "data" => %{"content" => "#{echo.value}"}
+      })
+    end
   end
 
   defp handle(data) do
