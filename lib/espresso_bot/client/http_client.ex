@@ -1,4 +1,4 @@
-defmodule EspressoBot.Discord.HttpClient do
+defmodule EspressoBot.Client.HttpClient do
   @moduledoc false
 
   defstruct [
@@ -6,7 +6,7 @@ defmodule EspressoBot.Discord.HttpClient do
     requests: %{}
   ]
 
-  alias EspressoBot.Discord.BaseClient, as: Base
+  alias EspressoBot.Client.BaseClient, as: Base
 
   use Base
   import Record

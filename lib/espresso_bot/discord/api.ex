@@ -5,8 +5,8 @@ defmodule EspressoBot.Discord.Api do
 
   @base_route "/api/v10"
 
-  alias EspressoBot.Discord.HttpClient
-  alias EspressoBot.Request
+  alias EspressoBot.Client.HttpClient
+  alias EspressoBot.Client.Request
 
   require HttpClient
 

@@ -1,4 +1,4 @@
-defmodule EspressoBot.Request do
+defmodule EspressoBot.Client.Request do
   defstruct [
     :conn,
     :method,

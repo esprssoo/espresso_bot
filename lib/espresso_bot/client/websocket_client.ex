@@ -1,4 +1,4 @@
-defmodule EspressoBot.Discord.WebsocketClient do
+defmodule EspressoBot.Client.WebsocketClient do
   @moduledoc false
 
   defstruct [
@@ -11,8 +11,8 @@ defmodule EspressoBot.Discord.WebsocketClient do
     closing?: false
   ]
 
-  alias EspressoBot.Discord.HttpClient
-  alias EspressoBot.Discord.BaseClient, as: Base
+  alias EspressoBot.Client.HttpClient
+  alias EspressoBot.Client.BaseClient, as: Base
 
   require HttpClient
 

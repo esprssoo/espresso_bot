@@ -1,8 +1,8 @@
-defmodule EspressoBot.Discord.BaseClient do
+defmodule EspressoBot.Client.BaseClient do
   @moduledoc false
 
-  alias EspressoBot.Discord.BaseClient
-  alias EspressoBot.Discord.HttpClient
+  alias EspressoBot.Client.BaseClient
+  alias EspressoBot.Client.HttpClient
 
   @callback handle_responses(Mint.Types.response(), term) :: term
 
