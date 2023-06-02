@@ -62,8 +62,10 @@ defmodule EspressoBot.Discord.Api do
       {"authorization", "Bot #{Application.get_env(:espresso_bot, :discord_bot_token)}"}
 
     request = %Request{request | headers: [bot_token_header | request.headers]}
+    response = do_request(request)
+    HttpClient.close(request.conn)
 
-    do_request(request)
+    response
   end
 
   defp do_request(%Request{} = request) do

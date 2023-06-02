@@ -4,7 +4,7 @@ defmodule EspressoBot.Discord.Shard do
   separate process.
   """
 
-  alias EspressoBot.Discord.WebsocketClient
+  alias EspressoBot.Client.WebsocketClient
   alias EspressoBot.Discord.Shard.Dispatcher
   alias EspressoBot.Discord.Shard.Payload
 

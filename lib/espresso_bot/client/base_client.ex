@@ -4,7 +4,8 @@ defmodule EspressoBot.Client.BaseClient do
   alias EspressoBot.Client.BaseClient
   alias EspressoBot.Client.HttpClient
 
-  @callback handle_responses(Mint.Types.response(), term) :: term
+  @callback handle_response(Mint.Types.response(), term) :: term
+  @callback do_close(term) :: term
 
   defmacro __using__(_) do
     quote do
@@ -13,11 +14,19 @@ defmodule EspressoBot.Client.BaseClient do
 
       use GenServer
 
-      require Logger
-
       @impl true
       def init(_) do
         {:ok, %__MODULE__{}}
+      end
+
+      @impl true
+      def handle_cast(:close, state) do
+        do_close(state)
+      end
+
+      @impl true
+      def terminate(_reason, state) do
+        Mint.HTTP.close(state.conn)
       end
 
       defoverridable BaseClient
@@ -26,7 +35,9 @@ defmodule EspressoBot.Client.BaseClient do
 
   defmacro __before_compile__(_) do
     quote do
-      def handle_responses(state, responses), do: HttpClient.handle_responses(state, responses)
+      def close(pid), do: GenServer.cast(pid, :close)
+
+      def handle_response(responses, state), do: HttpClient.handle_response(responses, state)
     end
   end
 

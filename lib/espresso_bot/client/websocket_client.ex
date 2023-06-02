@@ -15,8 +15,9 @@ defmodule EspressoBot.Client.WebsocketClient do
   alias EspressoBot.Client.BaseClient, as: Base
 
   require HttpClient
+  require Logger
 
-  use Base, [:websocket]
+  use Base
 
   # @type t :: %__MODULE__{conn: Mint.HTTP.t()}
 
@@ -82,7 +83,7 @@ defmodule EspressoBot.Client.WebsocketClient do
 
       {:ok, conn, responses} ->
         state = %__MODULE__{state | conn: conn}
-        state = Enum.reduce(responses, state, &handle_responses/2)
+        state = Enum.reduce(responses, state, &handle_response/2)
 
         if state.closing?, do: do_close(state), else: {:noreply, state}
 
@@ -92,7 +93,7 @@ defmodule EspressoBot.Client.WebsocketClient do
   end
 
   @impl true
-  def handle_responses({:done, ref}, state) do
+  def handle_response({:done, ref}, state) do
     HttpClient.response(status: status, headers: headers) = state.requests[ref].response
 
     case Mint.WebSocket.new(state.conn, ref, status, headers) do
@@ -111,7 +112,7 @@ defmodule EspressoBot.Client.WebsocketClient do
   end
 
   @impl true
-  def handle_responses({:data, _ref, data}, %__MODULE__{websocket: websocket} = state)
+  def handle_response({:data, _ref, data}, %__MODULE__{websocket: websocket} = state)
       when websocket != nil do
     case Mint.WebSocket.decode(websocket, data) do
       {:ok, websocket, frames} ->
@@ -122,6 +123,14 @@ defmodule EspressoBot.Client.WebsocketClient do
         GenServer.reply(state.caller, {:error, reason})
         put_in(state.websocket, websocket)
     end
+  end
+
+  @impl true
+  def do_close(state) do
+    _ = stream_frame(state, :close)
+    Mint.HTTP.close(state.conn)
+    send(state.sender, :close)
+    {:stop, :normal, state}
   end
 
   defp handle_frames(state, [frame | rest]) do
@@ -173,12 +182,5 @@ defmodule EspressoBot.Client.WebsocketClient do
       {:error, conn, error} ->
         {:error, put_in(state.conn, conn), error}
     end
-  end
-
-  defp do_close(state) do
-    _ = stream_frame(state, :close)
-    Mint.HTTP.close(state.conn)
-    send(state.sender, :close)
-    {:stop, :normal, state}
   end
 end

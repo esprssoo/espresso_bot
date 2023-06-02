@@ -10,6 +10,7 @@ defmodule EspressoBot.Client.HttpClient do
 
   use Base
   import Record
+  require Logger
 
   defrecord :response, status: nil, headers: [], data: ""
 
@@ -86,7 +87,7 @@ defmodule EspressoBot.Client.HttpClient do
 
       {:ok, conn, responses} ->
         state = %__MODULE__{state | conn: conn}
-        state = Enum.reduce(responses, state, &handle_responses/2)
+        state = Enum.reduce(responses, state, &handle_response/2)
 
         {:noreply, state}
 
@@ -96,26 +97,32 @@ defmodule EspressoBot.Client.HttpClient do
   end
 
   @impl true
-  def handle_responses({:status, ref, status}, state) do
+  def handle_response({:status, ref, status}, state) do
     put_in(state.requests[ref].response, response(state.requests[ref].response, status: status))
   end
 
   @impl true
-  def handle_responses({:headers, ref, headers}, state) do
+  def handle_response({:headers, ref, headers}, state) do
     put_in(state.requests[ref].response, response(state.requests[ref].response, headers: headers))
   end
 
   @impl true
-  def handle_responses({:data, ref, new_data}, state) do
+  def handle_response({:data, ref, new_data}, state) do
     response = state.requests[ref].response
     data = response(response, :data)
     put_in(state.requests[ref].response, response(response, data: data <> new_data))
   end
 
   @impl true
-  def handle_responses({:done, ref}, state) do
+  def handle_response({:done, ref}, state) do
     {request, state} = pop_in(state.requests[ref])
     GenServer.reply(request.from, {:ok, request.response})
     state
+  end
+
+  @impl true
+  def do_close(state) do
+    {:ok, _conn} = Mint.HTTP.close(state.conn)
+    {:stop, :normal, state}
   end
 end
